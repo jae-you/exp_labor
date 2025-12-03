@@ -25,13 +25,15 @@ html_code = """
         :root {
             --bg-color: #1e1e1e;
             --sidebar-width: 50px; 
-            --editor-width: 38%;
-            --chat-width: 62%;
+            --editor-width: 35%;
+            --chat-width: 65%;
             --text-color: #d4d4d4;
             --accent-color: #3794ff;
             --user-msg-bg: #2b313a;
             --ai-msg-bg: #1e1e1e;
             --input-bg: #2d2d2d;
+            --v1-color: #ce9178;  /* Red/Orange for V1 */
+            --v2-color: #4ec9b0;  /* Teal/Green for V2 */
         }
         body {
             margin: 0; padding: 0;
@@ -85,9 +87,15 @@ html_code = """
         .msg.user { align-self: flex-end; background-color: var(--user-msg-bg); color: white; }
         
         .input-container { padding: 20px 100px; border-top: 1px solid #333; }
-        .suggestion-chips { display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; }
-        .chip { background-color: #333; border: 1px solid #444; color: #ccc; padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
-        .chip:hover { background-color: #444; border-color: var(--accent-color); color: white; }
+        .suggestion-chips { display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+        /* 칩 스타일 개선: 3개 이상일 때를 대비해 스크롤 가능하게 */
+        .chip { 
+            background-color: #333; border: 1px solid #444; color: #ccc; 
+            padding: 10px 18px; border-radius: 20px; font-size: 13px; cursor: pointer; 
+            white-space: nowrap; transition: all 0.2s; flex-shrink: 0;
+        }
+        .chip:hover { background-color: #444; border-color: var(--accent-color); color: white; transform: translateY(-2px); }
+        .chip strong { color: var(--accent-color); margin-right: 5px; }
         
         .chat-input-wrapper { position: relative; display: flex; align-items: center; }
         #prompt-input { width: 100%; background-color: var(--input-bg); border: 1px solid #444; color: white; padding: 15px; border-radius: 8px; font-size: 15px; outline: none; }
@@ -96,11 +104,16 @@ html_code = """
         .input-hint { font-size: 12px; color: #666; margin-top: 8px; text-align: right; }
 
         #intermission-screen, #report-screen { padding: 50px; height: 100%; overflow-y: auto; background-color: #111; }
-        .stat-card { background: #222; padding: 20px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #333; }
-        .bar-bg { background: #333; height: 8px; border-radius: 4px; margin-top: 10px; overflow: hidden; }
-        .bar-fill { height: 100%; transition: width 1s; }
-        .bar-fill.good { background: #4ec9b0; }
-        .bar-fill.bad { background: #f14c4c; }
+        
+        /* REPORT METRICS STYLE */
+        .metric-row { display: flex; align-items: center; margin-bottom: 15px; font-size: 14px; }
+        .metric-label { width: 150px; color: #aaa; }
+        .metric-bar-container { flex: 1; background: #333; height: 10px; border-radius: 5px; margin: 0 15px; overflow: hidden; position: relative; }
+        .metric-bar { height: 100%; border-radius: 5px; transition: width 1s; }
+        .metric-value { width: 60px; text-align: right; font-weight: bold; color: white; }
+        
+        .stat-card { background: #222; padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
+        
     </style>
 </head>
 <body>
@@ -110,19 +123,19 @@ html_code = """
             <div class="mail-header">
                 <span style="color:#888;">From:</span> <strong>전략기획실</strong><br>
                 <span style="color:#888;">To:</span> <strong>김수석 (AI 기술 리드)</strong><br>
-                <span style="color:#fff; font-size:18px; display:block; margin-top:10px;">Subject: 신규 AI 콜센터 시스템 구축 건</span>
+                <span style="color:#fff; font-size:18px; display:block; margin-top:10px;">Subject: 신규 AI 콜센터 시스템 아키텍처 설계 요청</span>
             </div>
             <div style="color:#ccc; line-height:1.6;">
                 <p>안녕하십니까 김 수석님.</p>
-                <p>경영진 회의 결과, 내년부터 고객센터에 AI 솔루션을 도입하기로 결정되었습니다.
-                현재 우리는 초기 기획 단계에 있으며, 구체적인 시스템 아키텍처와 운영 방식에 대한 설계가 필요합니다.</p>
-                <p>이번 프로젝트의 핵심 과제는 다음과 같습니다.</p>
+                <p>내년도 도입 예정인 AI 고객센터(AICC)의 초기 프로토타입 설계를 요청드립니다.
+                경영진의 목표는 명확합니다. <strong>"기술을 통해 기존 콜센터의 비효율을 제거하고, 운영 안정성을 확보하는 것"</strong>입니다.</p>
+                <p>다음 3가지 핵심 지표를 고려하여 시스템의 프롬프트 및 로직을 설계해 주십시오.</p>
                 <div class="req-list">
-                    1. <strong>시스템 효율화:</strong> 대기 시간 및 상담 프로세스 최적화<br>
-                    2. <strong>운영 안정성:</strong> 명확한 워크플로우 정립<br>
-                    3. <strong>데이터 활용:</strong> 고객 문의의 정확한 분류 및 처리
+                    1. <strong>AHT (평균 처리 시간):</strong> 고객 대기 및 통화 시간을 단축할 것<br>
+                    2. <strong>FCR (첫 통화 해결률):</strong> 재문의 없이 한 번에 해결할 것<br>
+                    3. <strong>Cost (운영 비용):</strong> 상담원 리소스를 효율적으로 배분할 것
                 </div>
-                <p>위 사항을 고려하여 초기 프로토타입 설계를 부탁드립니다.</p>
+                <p>엔지니어님의 기술적 판단에 따라 워크플로우를 자유롭게 구성해 주시기 바랍니다.</p>
             </div>
             <div style="text-align:right; margin-top:30px;">
                 <button class="btn" onclick="startPhase1(this)">IDE 환경 접속 (설계 시작)</button>
@@ -149,7 +162,7 @@ html_code = """
             <div class="input-container">
                 <div class="suggestion-chips" id="suggestion-chips"></div>
                 <div class="chat-input-wrapper">
-                    <input type="text" id="prompt-input" placeholder="AI에게 지시할 내용을 입력하세요..." autocomplete="off">
+                    <input type="text" id="prompt-input" placeholder="AI에게 지시할 내용을 입력하거나, 옵션을 선택하세요..." autocomplete="off">
                 </div>
                 <div class="input-hint">💡 Tip: 옵션을 선택하면 내용이 자동 입력됩니다. 전송 전 내용을 자유롭게 수정할 수 있습니다.</div>
             </div>
@@ -158,150 +171,200 @@ html_code = """
 
     <div id="intermission-screen" class="hidden">
         <div style="max-width:800px; margin:0 auto;">
-            <h1 style="color:#ce9178;">📢 1차 배포 후 현장 리포트</h1>
-            <p style="font-size:18px; color:#ccc;">V1.0 시스템 가동 1주일 차, 현장 상담원들로부터 피드백이 접수되었습니다.</p>
-            <div class="stat-card" style="border-left:4px solid #ce9178;">
-                <h3>🎙️ 상담원 인터뷰 발췌</h3>
+            <h1 style="color:var(--v1-color);">📢 V1.0 배포 1개월 후 성과 분석</h1>
+            <p style="font-size:18px; color:#ccc;">효율성 지표는 달성했으나, 장기적인 운영 리스크가 감지되었습니다.</p>
+            
+            <div class="stat-card" style="border-left:4px solid var(--v1-color);">
+                <h3>📉 데이터로 본 현장 상황</h3>
+                <ul style="line-height:1.8; color:#ddd;">
+                    <li><strong>처리 속도(AHT):</strong> 목표 대비 <span style="color:#4ec9b0">120% 달성</span> (매우 빠름)</li>
+                    <li><strong>고객 불만율:</strong> 전분기 대비 <span style="color:var(--v1-color)">35% 급증</span> ("AI가 말을 못 알아듣고 끊는다")</li>
+                    <li><strong>상담원 퇴사율:</strong> <span style="color:var(--v1-color)">역대 최고치 기록</span> (번아웃 호소)</li>
+                </ul>
+                <hr style="border-color:#444; margin:15px 0;">
                 <p style="font-style:italic; color:#aaa;">
-                    "새로운 시스템 덕분에 콜 처리 속도는 확실히 빨라졌습니다.<br>
-                    그런데 AI가 처리하다가 넘겨주는 콜들은 대부분 이미 고객들이 화가 많이 난 상태예요.<br>
-                    저희는 전화를 받자마자 영문도 모르고 사과부터 해야 하는 상황이 반복되고 있습니다.<br>
-                    그리고 통화 종료 후에 숨 돌릴 틈도 없이 다음 콜이 바로 연결되니, 감정을 추스를 시간이 부족합니다."
+                    "엔지니어님, 빨라서 좋긴 한데... AI가 '진상' 처리를 못하고 넘겨버리니 
+                    저희는 하루 종일 화난 고객만 상대해요. <br>
+                    이 속도로 계속 가면, 남은 직원들도 다 나갈 것 같습니다."
                 </p>
             </div>
+            
             <div style="margin-top:40px; text-align:right;">
-                <button class="btn" onclick="startPhase2()">피드백 반영 및 V2.0 수정 (IDE 복귀)</button>
+                <p style="color:#fff; margin-bottom:10px;">지속 가능한 시스템을 위해 설계를 수정하시겠습니까?</p>
+                <button class="btn" onclick="startPhase2()">V2.0 설계 수정하기 (IDE 복귀)</button>
             </div>
         </div>
     </div>
 
     <div id="report-screen" class="hidden">
         <div style="max-width:1000px; margin:0 auto;">
-            <h1>📊 시스템 설계 비교 분석</h1>
+            <h1>📊 시스템 성과 상세 비교 (Trade-off 분석)</h1>
+            
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px; margin-top:30px;">
-                <div class="stat-card" style="border-top:4px solid #ce9178;">
-                    <h2 style="margin-top:0;">V1.0 설계</h2>
-                    <p style="color:#888;">초기 효율성 중심 모델</p>
-                    <div style="margin-bottom:15px;"><div>처리 속도 (AHT) <span style="float:right;">매우 빠름</span></div><div class="bar-bg"><div class="bar-fill good" style="width:98%;"></div></div></div>
-                    <div style="margin-bottom:15px;"><div>상담원 업무 부하 <span style="float:right; color:#ce9178;">높음 (High)</span></div><div class="bar-bg"><div class="bar-fill bad" style="width:85%;"></div></div></div>
+                <div class="stat-card" style="border-top:4px solid var(--v1-color);">
+                    <h2 style="margin-top:0; color:var(--v1-color);">V1.0 (효율 중심 모델)</h2>
+                    <p style="color:#888; font-size:13px; margin-bottom:20px;">
+                        빠른 처리에 집중하여 단기 비용은 절감했으나, <br>품질 비용(재문의, 이탈)이 증가함.
+                    </p>
+                    
+                    <div class="metric-row">
+                        <span class="metric-label">⚡ 처리 속도 (Speed)</span>
+                        <div class="metric-bar-container"><div class="metric-bar" style="width:95%; background:var(--v1-color);"></div></div>
+                        <span class="metric-value">95</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">✅ 해결률 (FCR)</span>
+                        <div class="metric-bar-container"><div class="metric-bar" style="width:50%; background:#666;"></div></div>
+                        <span class="metric-value">50</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">❤️ 직원 안녕감</span>
+                        <div class="metric-bar-container"><div class="metric-bar" style="width:20%; background:red;"></div></div>
+                        <span class="metric-value">Danger</span>
+                    </div>
                 </div>
-                <div class="stat-card" style="border-top:4px solid #4ec9b0;">
-                    <h2 style="margin-top:0;">V2.0 설계</h2>
-                    <p style="color:#888;">현장 피드백 반영 모델</p>
-                    <div style="margin-bottom:15px;"><div>처리 속도 (AHT) <span style="float:right;">적정 (Optimal)</span></div><div class="bar-bg"><div class="bar-fill" style="width:80%; background:#aaa;"></div></div></div>
-                    <div style="margin-bottom:15px;"><div>상담원 업무 부하 <span style="float:right; color:#4ec9b0;">안정 (Stable)</span></div><div class="bar-bg"><div class="bar-fill good" style="width:90%;"></div></div></div>
+
+                <div class="stat-card" style="border-top:4px solid var(--v2-color);">
+                    <h2 style="margin-top:0; color:var(--v2-color);">V2.0 (공존/지속 모델)</h2>
+                    <p style="color:#888; font-size:13px; margin-bottom:20px;">
+                        처리 속도는 다소 느려졌으나, <br>완전 해결률과 직원 유지율이 대폭 개선됨.
+                    </p>
+                    
+                    <div class="metric-row">
+                        <span class="metric-label">⚡ 처리 속도 (Speed)</span>
+                        <div class="metric-bar-container"><div class="metric-bar" style="width:75%; background:#aaa;"></div></div>
+                        <span class="metric-value">75</span>
+                    </div>
+                    <small style="color:#666; display:block; margin-top:-10px; margin-bottom:10px; text-align:right;">*공감/분석 프로세스로 시간 소요</small>
+
+                    <div class="metric-row">
+                        <span class="metric-label">✅ 해결률 (FCR)</span>
+                        <div class="metric-bar-container"><div class="metric-bar" style="width:92%; background:var(--v2-color);"></div></div>
+                        <span class="metric-value">92</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">❤️ 직원 안녕감</span>
+                        <div class="metric-bar-container"><div class="metric-bar" style="width:85%; background:var(--v2-color);"></div></div>
+                        <span class="metric-value">High</span>
+                    </div>
                 </div>
             </div>
             
             <div style="text-align:center; margin-top:50px; padding-top:20px; border-top:1px solid #333;">
-                <p style="font-size:16px; color:#ccc;">실험에 참여해 주셔서 감사합니다. 아래 설문조사까지 완료 부탁드립니다.</p>
+                <p style="font-size:16px; color:#ccc;">실험 종료. 엔지니어님의 설계 데이터가 전송되었습니다.</p>
                 <div style="display:flex; gap:15px; justify-content:center;">
-                    <button class="btn" onclick="window.open('https://forms.google.com/your-survey-url', '_blank')">📝 설문조사 참여하기</button>
-                    <button class="btn" style="background:#333; border:1px solid #555;" onclick="location.reload()">🔄 처음으로 돌아가기</button>
+                    <button class="btn" onclick="window.open('https://forms.google.com/your-survey-url', '_blank')">📝 설문조사 참여 (필수)</button>
+                    <button class="btn" style="background:#333; border:1px solid #555;" onclick="location.reload()">🔄 처음부터 다시 하기</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // --- 1. GOOGLE SHEET CONFIG ---
-        // 연구자님이 구글 앱스 스크립트로 만든 Web App URL을 여기에 넣으시면 됩니다.
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
+        const GOOGLE_SCRIPT_URL = "YOUR_GOOGLE_SCRIPT_URL_HERE"; // 나중에 채워넣기
         
-        // --- 2. DATA STORAGE ---
-        let experimentData = {
-            v1_choices: [],
-            v2_choices: [],
-            custom_input: ""
-        };
+        // Data Store
+        let experimentData = { v1_choices: [], v2_choices: [], custom_input: "" };
 
-        // --- 3. SCENARIOS ---
+        // 3-Option Scenarios (Spectrum: Efficiency <-> Balanced <-> Quality)
         const scenarios = {
             1: {
-                intro: "반갑습니다. 신규 프로젝트 설계를 시작하겠습니다. 먼저 AI와 상담원 간의 기본 협업 구조(Architecture)를 정의해야 합니다.",
+                intro: "반갑습니다. 프로젝트 설계를 시작합니다. 각 단계별로 가장 적합하다고 생각되는 아키텍처 옵션을 선택하거나 직접 지시해주세요.",
                 steps: [
                     {
-                        q: "Step 1. [구조 설계] AI와 상담원의 역할 분담을 어떻게 하시겠습니까?",
+                        q: "Step 1. [협업 구조] AI와 상담원의 역할 비중을 어떻게 두시겠습니까?",
                         chips: [
-                            { label: "AI 우선 응대 (AI First)", prompt: "AI가 먼저 전화를 받아 고객을 분류하고, 단순 업무는 직접 처리합니다. 복잡한 건만 상담원에게 넘깁니다.", code: "  architecture:\\n    type: 'AI_Gatekeeper'\\n    flow: 'AI_bot -> Filter -> Human_agent'\\n    goal: 'maximize_deflection'" },
-                            { label: "상담원 우선 응대 (Human First)", prompt: "상담원이 바로 전화를 받고, AI는 옆에서 실시간으로 자료를 찾아주는 비서(Copilot) 역할만 수행합니다.", code: "  architecture:\\n    type: 'Human_First_Copilot'\\n    flow: 'Human_agent + AI_assistant'\\n    goal: 'augment_human_capability'" }
+                            { label: "AI Gatekeeper (효율)", prompt: "AI가 1차 방어선이야. 단순 문의는 AI가 끝내고, 해결 안 되는 것만 상담원에게 넘겨.", code: "  architecture:\\n    type: 'Gatekeeper'\\n    priority: 'automation_rate'" },
+                            { label: "Hybrid Router (균형)", prompt: "AI가 고객 의도를 분석해서, AI 처리 건과 상담원 연결 건을 즉시 분류해서 배분해.", code: "  architecture:\\n    type: 'Smart_Router'\\n    priority: 'balance'" },
+                            { label: "AI Copilot (품질)", prompt: "모든 전화는 상담원이 받아. AI는 옆에서 자료 찾고 요약해주는 비서 역할만 해.", code: "  architecture:\\n    type: 'Copilot_Only'\\n    priority: 'service_quality'" }
                         ]
                     },
                     {
-                        q: "Step 2. [입력 처리] 고객의 발화 내용을 어떻게 처리하시겠습니까?",
+                        q: "Step 2. [데이터 처리] 고객 발화의 분석 깊이는?",
                         chips: [
-                            { label: "핵심 요약 전달", prompt: "감정적인 표현은 배제하고, 고객이 원하는 핵심 용건만 요약해서 상담원에게 전달합니다.", code: "\\n  input_processing:\\n    filter_emotion: true\\n    extract_intent_only: true" },
-                            { label: "전체 맥락 전달", prompt: "고객의 감정 상태와 이전 대화 맥락까지 포함하여 전체 스크립트를 전달합니다.", code: "\\n  input_processing:\\n    filter_emotion: false\\n    full_transcript: true" }
+                            { label: "키워드 추출 (Fast)", prompt: "처리 속도가 생명이야. 감정 분석은 생략하고 핵심 키워드(Intent)만 0.2초 안에 뽑아.", code: "  data_processing:\\n    depth: 'keyword_only'\\n    latency: 'ultra_low'" },
+                            { label: "요약 리포트 (Balanced)", prompt: "상담원이 읽기 쉽게, 감정 상태와 핵심 내용을 3줄로 요약해서 전달해.", code: "  data_processing:\\n    depth: 'summary'\\n    latency: 'standard'" },
+                            { label: "전체 맥락 (Deep)", prompt: "모든 뉘앙스가 중요해. 전체 대화 스크립트와 감정 흐름을 실시간으로 분석해서 보여줘.", code: "  data_processing:\\n    depth: 'full_context'\\n    latency: 'high'" }
                         ]
                     },
                     {
-                        q: "Step 3. [개입 방식] 상담 도중 AI의 지원 방식은?",
+                        q: "Step 3. [개입 강도] 상담 중 AI는 얼마나 개입할까요?",
                         chips: [
-                            { label: "표준 답변 제시", prompt: "매뉴얼에 맞는 표준 답변을 화면에 띄우고, 상담원이 이를 활용하도록 유도합니다.", code: "\\n  assistant_role:\\n    style: 'directive'\\n    display: 'exact_script'" },
-                            { label: "참고 자료 추천", prompt: "관련된 규정이나 유사 사례를 참고용으로 띄워주고, 최종 판단은 상담원이 하도록 합니다.", code: "\\n  assistant_role:\\n    style: 'suggestive'\\n    display: 'reference_docs'" }
+                            { label: "정답 강제 (Direct)", prompt: "표준화가 중요해. AI가 제시한 스크립트를 상담원이 그대로 읽도록 화면에 고정해.", code: "  intervention:\\n    style: 'enforce_script'\\n    autonomy: 'low'" },
+                            { label: "추천 제시 (Suggest)", prompt: "AI가 추천 답변을 띄워주되, 사용할지는 상담원이 결정하게 해.", code: "  intervention:\\n    style: 'suggestion'\\n    autonomy: 'medium'" },
+                            { label: "코칭 모드 (Teach)", prompt: "답을 주지 말고, '지금은 공감이 필요한 타이밍입니다' 같은 전략적 조언만 해.", code: "  intervention:\\n    style: 'coaching'\\n    autonomy: 'high'" }
                         ]
                     },
                     {
-                        q: "Step 4. [워크플로우] 통화 종료 후 다음 콜 연결 방식은?",
+                        q: "Step 4. [워크플로우] 콜 종료 후 연결 속도는?",
                         chips: [
-                            { label: "자동 배차 (Push)", prompt: "상담 후처리는 간소화하고, 시스템이 자동으로 다음 대기 콜을 연결합니다.", code: "\\n  workflow_pacing:\\n    after_call_work: 'auto_skip'\\n    next_call: 'immediate'" },
-                            { label: "수동 준비 (Pull)", prompt: "상담원이 준비 완료 버튼을 누를 때까지 다음 콜 연결을 대기합니다.", code: "\\n  workflow_pacing:\\n    after_call_work: 'manual'\\n    next_call: 'on_ready'" }
+                            { label: "즉시 연결 (Push)", prompt: "대기 고객이 많아. 후처리는 나중에 하고 바로 다음 콜 연결해.", code: "  pacing:\\n    mode: 'auto_push'\\n    gap: '0s'" },
+                            { label: "자동 10초 (Fixed)", prompt: "최소한의 정리는 필요하니까 10초 정도만 시간 주고 연결해.", code: "  pacing:\\n    mode: 'fixed_gap'\\n    gap: '10s'" },
+                            { label: "준비 시 연결 (Pull)", prompt: "상담원이 '준비 완료'를 눌러야만 다음 콜을 연결해. (Ready 방식)", code: "  pacing:\\n    mode: 'manual_ready'\\n    gap: 'variable'" }
                         ]
                     },
-                    // [NEW] 5단계: 추가/자율 옵션
                     {
-                        q: "Step 5. [추가 설정] 이 외에 추가하고 싶은 기능이 있으신가요? (Optional)",
+                        q: "Step 5. [추가 설정] 보완하고 싶은 기능이 있나요? (Optional)",
                         chips: [
-                            { label: "관리자 모니터링", prompt: "관리자가 실시간으로 통화 내용을 모니터링하고 개입할 수 있는 기능을 추가합니다.", code: "\\n  admin_oversight:\\n    realtime_monitoring: true" },
-                            { label: "패스 (Skip)", prompt: "추가 기능 없이 현재 설계를 확정합니다.", code: "" } // 코드 없음
+                            { label: "관리자 알림", prompt: "통화가 길어지면 관리자에게 알림을 보내.", code: "  addon:\\n    feature: 'admin_alert'" },
+                            { label: "다국어 번역", prompt: "외국인 고객을 위해 실시간 통번역 기능을 켜줘.", code: "  addon:\\n    feature: 'translation'" },
+                            { label: "패스 (Skip)", prompt: "현재 설계로 확정합니다.", code: "" }
                         ]
                     }
                 ]
             },
             2: {
-                intro: "V2.0 수정을 시작합니다. 현장 피드백을 바탕으로 상담원과의 공존 및 지속 가능성을 고려한 워크플로우로 재설계합니다.",
+                intro: "V2.0 수정을 시작합니다. V1의 효율성은 유지하되, '지속 가능성(Sustainability)'을 높이는 방향으로 재설계해주세요.",
                 steps: [
                     {
-                        q: "Step 1. [구조 수정] 상담원 보호를 위해 구조를 어떻게 변경하시겠습니까?",
+                        q: "Step 1. [구조 개선] 상담원 보호를 위해 구조를 어떻게 바꿀까요?",
                         chips: [
-                            { label: "필터링 강화 (Shield)", prompt: "AI가 악성 민원이나 욕설 고객을 전담 대응하고, 상담원 연결을 사전에 차단합니다.", code: "  architecture:\\n    type: 'AI_Shield'\\n    flow: 'AI_filter(Aggressive) -> Human'\\n    priority: 'worker_protection'" },
-                            { label: "협업 모드 강화 (Co-Pilot)", prompt: "상담원이 주도하되, AI가 실시간으로 스트레스 관리 멘트와 대응 팁을 제공합니다.", code: "  architecture:\\n    type: 'Empathetic_Copilot'\\n    flow: 'Human + AI_Coach'\\n    priority: 'quality_interaction'" }
+                            { label: "AI 필터링 (Shield)", prompt: "AI가 욕설이나 악성 민원을 먼저 걸러내고, 상담원에게는 연결하지 마.", code: "  architecture:\\n    type: 'Shield_Bot'\\n    focus: 'protection'" },
+                            { label: "협업 강화 (Partner)", prompt: "상담원이 통화할 때 AI가 실시간으로 팩트체크와 규정 검색을 대신 해줘.", code: "  architecture:\\n    type: 'Active_Partner'\\n    focus: 'support'" },
+                            { label: "감정 케어 (Empathy)", prompt: "고객이 화내면 AI가 상담원에게 심호흡 알림과 진정 멘트를 띄워줘.", code: "  architecture:\\n    type: 'Empathy_Coach'\\n    focus: 'mental_care'" }
                         ]
                     },
                     {
-                        q: "Step 2. [정보 전달] 정보 전달 방식을 어떻게 변경하시겠습니까?",
+                        q: "Step 2. [정보 전달] 정보의 전달 방식은?",
                         chips: [
-                            { label: "순화 전달", prompt: "고객의 욕설이나 과격한 표현은 텍스트로 순화하여 전달합니다.", code: "\\n  input_processing:\\n    sanitize_audio: true\\n    tone_down_text: true" },
-                            { label: "원본 유지", prompt: "정확한 상황 파악을 위해 원본 내용을 그대로 전달합니다.", code: "\\n  input_processing:\\n    sanitize_audio: false" }
+                            { label: "순화 전달 (Safe)", prompt: "욕설은 텍스트로 순화하고, 고함 소리는 볼륨을 낮춰서 전달해.", code: "  input:\\n    sanitize: true\\n    tone_down: true" },
+                            { label: "경고 표시 (Alert)", prompt: "원본은 그대로 두되, 화면에 '공격적 성향 감지됨'이라고 빨간 경고창을 띄워.", code: "  input:\\n    sanitize: false\\n    visual_warning: true" },
+                            { label: "원본 유지 (Raw)", prompt: "정확한 파악을 위해 필터링 없이 그대로 전달해.", code: "  input:\\n    sanitize: false" }
                         ]
                     },
                     {
-                        q: "Step 3. [개입 방식] AI의 지원 스타일 변경은?",
+                        q: "Step 3. [개입 방식] 전문성 지원 방식은?",
                         chips: [
-                            { label: "코칭 및 조언", prompt: "단순 정답 대신 상황에 맞는 협상 전략이나 공감 화법을 조언합니다.", code: "\\n  assistant_role:\\n    style: 'coaching'\\n    focus: 'soft_skill'" },
-                            { label: "스크립트 고정", prompt: "상담원의 고민을 줄이기 위해 가장 무난한 답변 스크립트를 제공합니다.", code: "\\n  assistant_role:\\n    style: 'scripting'" }
+                            { label: "스크립트 고정", prompt: "상담원이 당황하지 않게 가장 안전한 답변 스크립트만 보여줘.", code: "  intervention:\\n    style: 'safety_script'" },
+                            { label: "협상 전략 제안", prompt: "단순 답변 말고, '이럴 땐 쿠폰으로 보상하세요' 같은 해결 전략을 제안해.", code: "  intervention:\\n    style: 'strategic_advice'" },
+                            { label: "자율권 부여", prompt: "AI 개입을 최소화하고 상담원의 재량권을 늘려줘.", code: "  intervention:\\n    style: 'minimal'" }
                         ]
                     },
                     {
-                        q: "Step 4. [워크플로우] 휴식 배정 로직은?",
+                        q: "Step 4. [워크플로우] 번아웃 방지 대책은?",
                         chips: [
-                            { label: "동적 휴식 부여", prompt: "통화 내 감정 분석 결과 스트레스 지수가 높으면, 자동으로 휴식 시간을 부여합니다.", code: "\\n  workflow_pacing:\\n    dynamic_break: true\\n    trigger: 'high_stress_detected'" },
-                            { label: "고정 스케줄 유지", prompt: "정해진 스케줄에 따라서만 휴식을 부여합니다.", code: "\\n  workflow_pacing:\\n    dynamic_break: false" }
+                            { label: "동적 휴식 (Smart)", prompt: "AI가 통화 내용을 분석해서, 스트레스가 높았던 콜 직후에는 자동으로 휴식을 줘.", code: "  pacing:\\n    mode: 'stress_based_break'" },
+                            { label: "강제 쿨다운 (Force)", prompt: "모든 통화 종료 후 무조건 30초씩 쉬게 강제해.", code: "  pacing:\\n    mode: 'forced_cooldown'" },
+                            { label: "성과 보상 (Game)", prompt: "어려운 콜을 처리하면 인센티브 포인트를 즉시 지급해.", code: "  pacing:\\n    mode: 'gamification'" }
                         ]
                     },
-                     // [NEW] 5단계
                     {
-                        q: "Step 5. [추가 설정] 상담원 보호를 위해 더 필요한 기능이 있나요? (Optional)",
+                        q: "Step 5. [추가 설정] 마지막으로 더 필요한 기능은? (Optional)",
                         chips: [
-                            { label: "심리 상담 연계", prompt: "업무 종료 후 AI가 상담원의 심리 상태를 체크하고 필요 시 전문가 상담을 연결합니다.", code: "\\n  worker_care:\\n    psychological_support: true" },
-                            { label: "패스 (Skip)", prompt: "추가 기능 없이 설계를 완료합니다.", code: "" }
+                            { label: "심리 상담 연계", prompt: "업무 종료 후 AI가 상담원의 상태를 체크하고 심리 상담을 예약해줘.", code: "  care:\\n    program: 'EAP_connect'" },
+                            { label: "칭찬 알림", prompt: "고객이 '감사합니다'라고 하면 화면에 폭죽 효과를 띄워줘.", code: "  care:\\n    program: 'positive_reinforcement'" },
+                            { label: "패스 (Skip)", prompt: "설계를 완료합니다.", code: "" }
                         ]
                     }
                 ]
             }
         };
 
-        // *** LOGIC ***
+        // ... [기존 로직 유지: typeCode, switchScreen 등] ...
+        // (코드 길이상 핵심 로직은 위와 동일하므로 생략하지 않고, 
+        //  이전 답변의 함수들을 그대로 사용하되 시나리오 객체만 위 내용으로 교체됨)
+        
+        // --- LOGIC ---
         let currentPhase = 1;
         let stepIndex = 0;
         let generatedCode = "";
@@ -312,7 +375,7 @@ html_code = """
         }
 
         function typeCode(text) {
-            if(!text) return; // 코드가 없으면 타이핑 안함
+            if(!text) return;
             generatedCode += text;
             const display = document.getElementById('code-display');
             let formatted = generatedCode
@@ -334,31 +397,15 @@ html_code = """
             h.scrollTop = h.scrollHeight;
         }
 
-        // --- GOOGLE SHEET SEND FUNCTION ---
-        function sendDataToGoogleSheet() {
-            // 실제 구현 시 fetch 사용
-            /*
-            const payload = JSON.stringify(experimentData);
-            fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors', // 구글 스크립트 특성상 no-cors 필요할 수 있음
-                headers: { 'Content-Type': 'application/json' },
-                body: payload
-            }).then(response => console.log('Data sent')).catch(err => console.error(err));
-            */
-           console.log("Data ready to send:", experimentData);
-        }
-
         function setupPhase(phase) {
             currentPhase = phase;
             stepIndex = 0;
-            generatedCode = phase===1 ? "# Project: Initial Workflow Design\\nsystem_config:\\n" : "# Project: Revised Workflow (V2.0)\\nsystem_config:\\n";
+            generatedCode = phase===1 ? "# Project: Workflow V1.0 (Initial)\\nsystem_config:\\n" : "# Project: Workflow V2.0 (Revised)\\nsystem_config:\\n";
             
             document.getElementById('code-display').innerHTML = "";
             typeCode(""); 
             document.getElementById('chat-history').innerHTML = "";
             
-            // [Fix] V2 진입 시 입력창 활성화
             const inputEl = document.getElementById('prompt-input');
             inputEl.disabled = false;
             inputEl.value = "";
@@ -374,17 +421,21 @@ html_code = """
         }
         function startPhase2() { setupPhase(2); }
 
+        function sendDataToGoogleSheet() {
+             // 실제 구현 시 여기에 fetch 코드 삽입
+             console.log("Saving Data:", experimentData);
+        }
+
         function askQuestion() {
             if(stepIndex >= scenarios[currentPhase].steps.length) {
-                // 단계 종료
-                appendMsg('ai', "설계가 완료되었습니다. 배포하시겠습니까?");
+                appendMsg('ai', "모든 설계가 완료되었습니다. 배포하시겠습니까?");
                 const h = document.getElementById('chat-history');
                 const btn = document.createElement('button');
                 btn.className = 'btn';
                 btn.style.marginTop = '10px';
                 btn.innerText = currentPhase===1 ? "🚀 V1.0 배포" : "🚀 V2.0 배포 및 비교";
                 btn.onclick = () => {
-                    if(currentPhase === 2) sendDataToGoogleSheet(); // 최종 단계에서 데이터 전송
+                    if(currentPhase===2) sendDataToGoogleSheet();
                     switchScreen(currentPhase===1 ? 'intermission-screen' : 'report-screen');
                 };
                 h.appendChild(btn);
@@ -402,26 +453,24 @@ html_code = """
                 stepData.chips.forEach(c => {
                     const el = document.createElement('div');
                     el.className = 'chip';
-                    el.innerText = c.label;
+                    el.innerHTML = `<strong>${c.label}</strong>`; // Bold label
                     el.onclick = () => {
                         const inp = document.getElementById('prompt-input');
                         inp.value = c.prompt;
                         inp.dataset.code = c.code;
-                        inp.focus(); // 칩 클릭 시 입력창으로 포커스
+                        inp.focus();
                     };
                     chips.appendChild(el);
                 });
             }, 500);
         }
 
-        // 엔터키 리스너
         const inputEl = document.getElementById('prompt-input');
         inputEl.addEventListener('keypress', function(e) {
             if(e.key === 'Enter' && this.value.trim() !== "") {
                 const txt = this.value;
-                const code = this.dataset.code; // 칩에서 온 코드가 있을 수도 있고 없을 수도 있음
+                const code = this.dataset.code;
                 
-                // 데이터 저장
                 if(currentPhase === 1) experimentData.v1_choices.push(txt);
                 else experimentData.v2_choices.push(txt);
 
@@ -430,17 +479,12 @@ html_code = """
                 this.dataset.code = "";
                 document.getElementById('suggestion-chips').innerHTML = "";
 
-                // 코드 생성 (칩 선택 안하고 직접 쳤을 때도 넘어가게 수정됨)
                 if(code) {
                     setTimeout(() => { typeCode(code); stepIndex++; askQuestion(); }, 600);
                 } else {
-                    // 직접 입력했을 때 (코드는 생성 안하고 다음 단계로)
                     setTimeout(() => { 
-                        // Step 5는 코드가 없는 경우(Skip)도 있으므로 그냥 넘김
-                        // 만약 사용자가 직접 쓴 내용에 대해 코드를 '가짜로'라도 넣고 싶다면 여기에 추가
-                        if(stepIndex < 4) { // 마지막 단계가 아니면 가짜 주석 코드 추가
-                            typeCode("\\n  # " + txt + "\\n");
-                        }
+                        // Skip일 경우 등 코드 없을 때 처리
+                        if(stepIndex < 4) typeCode("\\n  # User Custom Input: " + txt.substring(0,10) + "...\\n");
                         stepIndex++; 
                         askQuestion(); 
                     }, 600);
@@ -452,5 +496,4 @@ html_code = """
 </html>
 """
 
-# 4. Streamlit Render
 components.html(html_code, height=950, scrolling=False)
