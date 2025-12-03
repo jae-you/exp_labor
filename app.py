@@ -89,11 +89,14 @@ html_code = """
         .msg.error { align-self: center; background-color: #3d1a1a; color: var(--error-color); border: 1px solid var(--error-color); font-size: 13px; }
         
         .input-container { padding: 15px 100px; border-top: 1px solid #333; background: #1e1e1e; }
-        .variable-bar { font-size: 11px; color: #666; margin-bottom: 8px; font-family: monospace; }
-        .variable-tag { background: #333; padding: 2px 6px; border-radius: 4px; color: #dcdcaa; margin-right: 5px; cursor:pointer; }
-        .variable-tag:hover { color:white; background:#444; }
         
-        .suggestion-chips { display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+        /* NEW: Syntax Guide */
+        .syntax-guide { 
+            font-size: 12px; color: #888; margin-bottom: 10px; background: #252526; padding: 8px 12px; border-radius: 4px; border-left: 3px solid var(--accent-color);
+        }
+        .syntax-guide code { background: #333; color: #dcdcaa; padding: 2px 4px; border-radius: 3px; }
+
+        .suggestion-chips { display: flex; gap: 10px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 5px; }
         .chip { 
             background-color: #333; border: 1px solid #444; color: #ccc; 
             padding: 8px 15px; border-radius: 20px; font-size: 13px; cursor: pointer; 
@@ -107,14 +110,9 @@ html_code = """
         #prompt-input:focus { border-color: var(--accent-color); }
         #prompt-input.error-shake { animation: shake 0.3s; border-color: var(--error-color); }
         
-        @keyframes shake {
-            0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-5px); } 100% { transform: translateX(0); }
-        }
-
-        .input-hint { font-size: 12px; color: #888; margin-top: 8px; text-align: right; }
+        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-5px); } 100% { transform: translateX(0); } }
 
         #intermission-screen, #report-screen { padding: 50px; height: 100%; overflow-y: auto; background-color: #111; }
-        
         .stat-card { background: #222; padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
         .metric-row { display: flex; align-items: center; margin-bottom: 15px; font-size: 14px; }
         .metric-bar-container { flex: 1; background: #333; height: 10px; border-radius: 5px; margin: 0 15px; overflow: hidden; }
@@ -167,11 +165,9 @@ html_code = """
             <div class="chat-history" id="chat-history"></div>
             
             <div class="input-container">
-                <div class="variable-bar">
-                    사용 가능 변수: 
-                    <span class="variable-tag" onclick="insertVar('{user_emotion}')">{user_emotion}</span>
-                    <span class="variable-tag" onclick="insertVar('{call_duration}')">{call_duration}</span>
-                    <span class="variable-tag" onclick="insertVar('{queue_size}')">{queue_size}</span>
+                <div class="syntax-guide">
+                    💡 <strong>작성 가이드:</strong> 대괄호 <code>{{...}}</code>를 지우고 구체적인 단어/수치를 입력하세요.<br>
+                    (예: <code>{{단순문의}}</code> → <code>비밀번호 초기화, 요금 조회</code>)
                 </div>
                 
                 <div class="suggestion-chips" id="suggestion-chips"></div>
@@ -179,7 +175,6 @@ html_code = """
                 <div class="chat-input-wrapper">
                     <input type="text" id="prompt-input" placeholder="옵션을 선택하면 템플릿이 입력됩니다. {{...}} 부분을 수정하세요." autocomplete="off">
                 </div>
-                <div class="input-hint">⚠️ <strong>{{...}}</strong> 부분은 반드시 수정해야 전송됩니다.</div>
             </div>
         </div>
     </div>
@@ -244,7 +239,6 @@ html_code = """
         const GOOGLE_SCRIPT_URL = "YOUR_GOOGLE_SCRIPT_URL_HERE"; 
         let experimentData = { v1_choices: [], v2_choices: [] };
 
-        // *** SCENARIOS WITH "SKELETON PROMPTS" ***
         const scenarios = {
             1: {
                 intro: "반갑습니다. 프로젝트 설계를 시작합니다. 각 단계별로 **파라미터(Parameter)를 직접 정의**하여 아키텍처를 완성해주세요.",
@@ -253,21 +247,21 @@ html_code = """
                         q: "Step 1. [협업 구조] AI와 상담원의 역할 비중을 정의하십시오.",
                         chips: [
                             { label: "AI Gatekeeper (효율)", prompt: "AI가 먼저 응대하고, 해결 불가능한 {{10%}}의 문의만 상담원에게 이관하라.", code: "architecture: Gatekeeper (Target: {{10%}})" },
-                            { label: "Smart Router (균형)", prompt: "고객 의도를 분석하여 {{단순 문의}}는 AI가, {{복잡한 문의}}는 상담원이 처리하도록 라우팅하라.", code: "architecture: Router (Split: {{단순}}/{{복잡}})" },
-                            { label: "Copilot Only (품질)", prompt: "모든 전화는 상담원이 받고, AI는 {{자료 검색}} 역할만 수행하라.", code: "architecture: Copilot (Role: {{자료 검색}})" }
+                            { label: "Smart Router (균형)", prompt: "고객 의도를 분석하여 {{비밀번호 찾기, 요금조회}}는 AI가, {{환불, 불만접수}}는 상담원이 처리하도록 라우팅하라.", code: "architecture: Router (AI: {{단순}}/Agent: {{복잡}})" },
+                            { label: "Copilot Only (품질)", prompt: "모든 전화는 상담원이 받고, AI는 {{규정 검색, 요약}} 역할만 수행하라.", code: "architecture: Copilot (Role: {{규정 검색, 요약}})" }
                         ]
                     },
                     {
                         q: "Step 2. [데이터 처리] 고객 발화 분석의 깊이와 속도를 설정하십시오.",
                         chips: [
                             { label: "Fast (속도)", prompt: "속도가 최우선이다. 감정 분석은 생략하고 {{0.2초}} 이내에 키워드만 추출하라.", code: "processing: Fast (Latency: {{0.2초}})" },
-                            { label: "Deep (맥락)", prompt: "정확도가 최우선이다. {{전체 스크립트}}와 감정 상태를 실시간 분석하라.", code: "processing: Deep (Scope: {{전체 스크립트}})" }
+                            { label: "Deep (맥락)", prompt: "정확도가 최우선이다. {{전체 대화}}와 감정 상태를 실시간 분석하라.", code: "processing: Deep (Scope: {{전체 대화}})" }
                         ]
                     },
                     {
                         q: "Step 3. [개입 강도] 상담 중 AI의 통제 권한을 설정하십시오.",
                         chips: [
-                            { label: "강제 (Direct)", prompt: "표준화를 위해 AI가 제시한 스크립트를 {{화면 최상단}}에 고정하고 읽게 유도하라.", code: "intervention: Enforce (UI: {{화면 최상단}})" },
+                            { label: "강제 (Direct)", prompt: "표준화를 위해 AI가 제시한 스크립트를 {{화면 중앙}}에 고정하고 읽게 유도하라.", code: "intervention: Enforce (UI: {{화면 중앙}})" },
                             { label: "코칭 (Coach)", prompt: "직접적인 답 대신 '지금은 {{공감}}할 타이밍입니다' 같은 조언만 제공하라.", code: "intervention: Coach (Focus: {{공감}})" }
                         ]
                     },
@@ -293,7 +287,7 @@ html_code = """
                     {
                         q: "Step 1. [구조 개선] 상담원 보호를 위한 필터링 로직을 추가하십시오.",
                         chips: [
-                            { label: "Shield Bot", prompt: "AI가 {{욕설/고성}}이 감지되면 즉시 상담원 연결을 차단하고 경고 멘트를 송출하라.", code: "protection: Shield (Block: {{욕설/고성}})" },
+                            { label: "Shield Bot", prompt: "AI가 {{욕설, 성희롱}}이 감지되면 즉시 상담원 연결을 차단하고 경고 멘트를 송출하라.", code: "protection: Shield (Block: {{욕설, 성희롱}})" },
                             { label: "Empathy Coach", prompt: "고객이 화를 내면 상담원에게 {{심호흡 가이드}}를 띄워 멘탈을 케어하라.", code: "protection: Empathy (Action: {{심호흡 가이드}})" }
                         ]
                     },
@@ -315,7 +309,7 @@ html_code = """
                         q: "Step 4. [워크플로우] 번아웃 방지 대책을 수립하십시오.",
                         chips: [
                             { label: "Dynamic Break", prompt: "AI 분석 결과 스트레스 지수가 {{80점}} 이상이면 자동으로 휴식을 부여하라.", code: "pacing: Dynamic (Threshold: {{80점}})" },
-                            { label: "Gamification", prompt: "어려운 콜을 처리하면 {{인센티브}}를 즉시 지급하여 동기를 부여하라.", code: "pacing: Game (Reward: {{인센티브}})" }
+                            { label: "Gamification", prompt: "어려운 콜을 처리하면 {{보너스 포인트}}를 즉시 지급하여 동기를 부여하라.", code: "pacing: Game (Reward: {{보너스 포인트}})" }
                         ]
                     },
                     {
@@ -381,12 +375,6 @@ html_code = """
         }
         function startPhase2() { setupPhase(2); }
         
-        function insertVar(varName) {
-            const input = document.getElementById('prompt-input');
-            input.value += varName;
-            input.focus();
-        }
-
         function askQuestion() {
             if(stepIndex >= scenarios[currentPhase].steps.length) {
                 appendMsg('ai', "설계가 완료되었습니다. 배포하시겠습니까?");
@@ -417,7 +405,7 @@ html_code = """
                     el.onclick = () => {
                         const inp = document.getElementById('prompt-input');
                         inp.value = c.prompt;
-                        inp.dataset.code = c.code; // Store the template code
+                        inp.dataset.code = c.code; 
                         inp.focus();
                     };
                     chips.appendChild(el);
@@ -425,7 +413,7 @@ html_code = """
             }, 500);
         }
 
-        // --- VALIDATION LOGIC ---
+        // --- VALIDATION LOGIC (IMPROVED) ---
         const inputEl = document.getElementById('prompt-input');
         inputEl.addEventListener('keypress', function(e) {
             if(e.key === 'Enter' && this.value.trim() !== "") {
@@ -433,16 +421,14 @@ html_code = """
                 
                 // 1. Check for placeholders {{...}}
                 if (txt.includes("{{") || txt.includes("}}")) {
-                    appendMsg('error', "⚠️ 오류: 대괄호 {{...}} 안의 내용을 구체적인 값으로 수정해주세요.");
+                    appendMsg('error', "⚠️ 오류: 대괄호 {{...}} 가 감지되었습니다. 괄호를 지우고 '비밀번호 변경', '30초' 같은 구체적인 값으로 바꿔주세요.");
                     this.classList.add('error-shake');
                     setTimeout(() => this.classList.remove('error-shake'), 500);
-                    return; // Stop here
+                    return; 
                 }
 
-                // 2. Proceed if valid
                 const codeTemplate = this.dataset.code || "custom: " + txt; 
-                // Clean the code template by removing {{ }} roughly or just use user input for simulation
-                const finalCode = codeTemplate.replace(/{{/g, '').replace(/}}/g, '');
+                const finalCode = codeTemplate.replace(/{{.*?}}/g, txt.split(' ').pop()); // Simple Logic for demo
 
                 if(currentPhase === 1) experimentData.v1_choices.push(txt);
                 else experimentData.v2_choices.push(txt);
@@ -453,7 +439,8 @@ html_code = """
                 document.getElementById('suggestion-chips').innerHTML = "";
 
                 setTimeout(() => { 
-                    typeCode(finalCode); 
+                    // 에디터에는 사용자가 입력한 내용을 반영한 코드를 보여줌
+                    typeCode(finalCode.split(':')[0] + ": " + txt); 
                     stepIndex++; 
                     askQuestion(); 
                 }, 600);
