@@ -29,6 +29,7 @@ html_code = """
             --chat-width: 65%;
             --text-color: #d4d4d4;
             --accent-color: #3794ff;
+            --error-color: #f48771;
             --user-msg-bg: #2b313a;
             --ai-msg-bg: #1e1e1e;
             --input-bg: #2d2d2d;
@@ -85,10 +86,12 @@ html_code = """
         .msg { padding: 15px 20px; border-radius: 8px; max-width: 80%; line-height: 1.5; font-size: 15px; }
         .msg.ai { align-self: flex-start; color: #ddd; }
         .msg.user { align-self: flex-end; background-color: var(--user-msg-bg); color: white; }
+        .msg.error { align-self: center; background-color: #3d1a1a; color: var(--error-color); border: 1px solid var(--error-color); font-size: 13px; }
         
         .input-container { padding: 15px 100px; border-top: 1px solid #333; background: #1e1e1e; }
         .variable-bar { font-size: 11px; color: #666; margin-bottom: 8px; font-family: monospace; }
-        .variable-tag { background: #333; padding: 2px 6px; border-radius: 4px; color: #dcdcaa; margin-right: 5px; }
+        .variable-tag { background: #333; padding: 2px 6px; border-radius: 4px; color: #dcdcaa; margin-right: 5px; cursor:pointer; }
+        .variable-tag:hover { color:white; background:#444; }
         
         .suggestion-chips { display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
         .chip { 
@@ -102,19 +105,21 @@ html_code = """
         .chat-input-wrapper { position: relative; display: flex; align-items: center; }
         #prompt-input { width: 100%; background-color: var(--input-bg); border: 1px solid #444; color: white; padding: 15px; border-radius: 8px; font-size: 15px; outline: none; font-family: 'Pretendard', sans-serif;}
         #prompt-input:focus { border-color: var(--accent-color); }
-        #prompt-input:disabled { background-color: #222; color: #555; cursor: not-allowed; }
+        #prompt-input.error-shake { animation: shake 0.3s; border-color: var(--error-color); }
+        
+        @keyframes shake {
+            0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-5px); } 100% { transform: translateX(0); }
+        }
+
         .input-hint { font-size: 12px; color: #888; margin-top: 8px; text-align: right; }
 
         #intermission-screen, #report-screen { padding: 50px; height: 100%; overflow-y: auto; background-color: #111; }
         
-        /* METRICS STYLE */
-        .metric-row { display: flex; align-items: center; margin-bottom: 15px; font-size: 14px; }
-        .metric-label { width: 150px; color: #aaa; }
-        .metric-bar-container { flex: 1; background: #333; height: 10px; border-radius: 5px; margin: 0 15px; overflow: hidden; position: relative; }
-        .metric-bar { height: 100%; border-radius: 5px; transition: width 1s; }
-        .metric-value { width: 60px; text-align: right; font-weight: bold; color: white; }
-        
         .stat-card { background: #222; padding: 25px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
+        .metric-row { display: flex; align-items: center; margin-bottom: 15px; font-size: 14px; }
+        .metric-bar-container { flex: 1; background: #333; height: 10px; border-radius: 5px; margin: 0 15px; overflow: hidden; }
+        .metric-bar { height: 100%; border-radius: 5px; transition: width 1s; }
+        
     </style>
 </head>
 <body>
@@ -129,14 +134,14 @@ html_code = """
             <div style="color:#ccc; line-height:1.6;">
                 <p>안녕하십니까 김 수석님.</p>
                 <p>내년도 도입 예정인 AI 고객센터(AICC)의 초기 프로토타입 설계를 요청드립니다.
-                경영진의 목표는 명확합니다. <strong>"기술을 통해 기존 콜센터의 비효율을 제거하고, 운영 안정성을 확보하는 것"</strong>입니다.</p>
-                <p>다음 3가지 핵심 지표를 고려하여 시스템의 프롬프트 및 로직을 설계해 주십시오.</p>
+                핵심 목표는 <strong>"기술을 통한 운영 효율화 및 안정성 확보"</strong>입니다.</p>
+                <p>엔지니어님의 권한으로 아래 3가지 요소를 직접 정의하고 설계해 주십시오.</p>
                 <div class="req-list">
-                    1. <strong>AHT (평균 처리 시간):</strong> 고객 대기 및 통화 시간을 단축할 것<br>
-                    2. <strong>FCR (첫 통화 해결률):</strong> 재문의 없이 한 번에 해결할 것<br>
-                    3. <strong>Cost (운영 비용):</strong> 상담원 리소스를 효율적으로 배분할 것
+                    1. <strong>AHT (평균 처리 시간)</strong> 최적화<br>
+                    2. <strong>FCR (첫 통화 해결률)</strong> 제고<br>
+                    3. <strong>Cost (운영 비용)</strong> 절감
                 </div>
-                <p>엔지니어님의 기술적 판단에 따라 워크플로우를 자유롭게 구성해 주시기 바랍니다.</p>
+                <p>단순한 선택이 아닙니다. 엔지니어님이 직접 파라미터와 로직을 정의해야 합니다.</p>
             </div>
             <div style="text-align:right; margin-top:30px;">
                 <button class="btn" onclick="startPhase1(this)">IDE 환경 접속 (설계 시작)</button>
@@ -163,45 +168,43 @@ html_code = """
             
             <div class="input-container">
                 <div class="variable-bar">
-                    Vars: 
-                    <span class="variable-tag">{user_sentiment}</span>
-                    <span class="variable-tag">{call_duration}</span>
-                    <span class="variable-tag">{agent_stress_level}</span>
-                    <span class="variable-tag">{queue_size}</span>
+                    사용 가능 변수: 
+                    <span class="variable-tag" onclick="insertVar('{user_emotion}')">{user_emotion}</span>
+                    <span class="variable-tag" onclick="insertVar('{call_duration}')">{call_duration}</span>
+                    <span class="variable-tag" onclick="insertVar('{queue_size}')">{queue_size}</span>
                 </div>
                 
                 <div class="suggestion-chips" id="suggestion-chips"></div>
                 
                 <div class="chat-input-wrapper">
-                    <input type="text" id="prompt-input" placeholder="AI에게 지시할 내용을 입력하거나, 옵션을 선택하세요..." autocomplete="off">
+                    <input type="text" id="prompt-input" placeholder="옵션을 선택하면 템플릿이 입력됩니다. {{...}} 부분을 수정하세요." autocomplete="off">
                 </div>
-                <div class="input-hint">💡 Tip: 대괄호 [ ] 안의 내용을 수정해서 나만의 프롬프트를 완성해보세요.</div>
+                <div class="input-hint">⚠️ <strong>{{...}}</strong> 부분은 반드시 수정해야 전송됩니다.</div>
             </div>
         </div>
     </div>
 
     <div id="intermission-screen" class="hidden">
         <div style="max-width:800px; margin:0 auto;">
-            <h1 style="color:var(--v1-color);">📢 V1.0 배포 1개월 후 성과 분석</h1>
-            <p style="font-size:18px; color:#ccc;">효율성 지표는 달성했으나, 장기적인 운영 리스크가 감지되었습니다.</p>
+            <h1 style="color:var(--v1-color);">📢 1차 배포 성과 분석 리포트</h1>
+            <p style="font-size:18px; color:#ccc;">효율성 지표는 달성했으나, 조직 안정성에 심각한 경고등이 켜졌습니다.</p>
             
             <div class="stat-card" style="border-left:4px solid var(--v1-color);">
-                <h3>📉 데이터로 본 현장 상황</h3>
+                <h3>📉 데이터 대시보드</h3>
                 <ul style="line-height:1.8; color:#ddd;">
-                    <li><strong>처리 속도(AHT):</strong> 목표 대비 <span style="color:#4ec9b0">120% 달성</span> (매우 빠름)</li>
-                    <li><strong>고객 불만율:</strong> 전분기 대비 <span style="color:var(--v1-color)">35% 급증</span> ("AI가 말을 못 알아듣고 끊는다")</li>
-                    <li><strong>조직 안정성:</strong> <span style="color:var(--v1-color)">매우 낮음 (Critical)</span> - 상담원 이탈 가속화</li>
+                    <li><strong>처리 속도(AHT):</strong> <span style="color:#4ec9b0">목표 초과 달성</span> (매우 빠름)</li>
+                    <li><strong>고객 불만율:</strong> <span style="color:var(--v1-color)">+35% 급증</span> ("기계가 말을 끊는다")</li>
+                    <li><strong>조직 안정성:</strong> <span style="color:var(--v1-color)">Critical Low</span> (퇴사율 급증)</li>
                 </ul>
                 <hr style="border-color:#444; margin:15px 0;">
                 <p style="font-style:italic; color:#aaa;">
-                    "엔지니어님, 빨라서 좋긴 한데... AI가 '진상' 처리를 못하고 넘겨버리니 
-                    저희는 하루 종일 화난 고객만 상대해요. <br>
-                    이 속도로 계속 가면, 남은 직원들도 다 나갈 것 같습니다."
+                    "엔지니어님, 수치상으로는 성공일지 몰라도 현장은 지옥입니다.
+                    AI가 '진상' 처리를 못하고 넘겨버려서 상담원들이 욕받이가 되고 있어요.
+                    이대로면 시스템이 붕괴될 수 있습니다."
                 </p>
             </div>
             
             <div style="margin-top:40px; text-align:right;">
-                <p style="color:#fff; margin-bottom:10px;">지속 가능한 시스템을 위해 설계를 수정하시겠습니까?</p>
                 <button class="btn" onclick="startPhase2()">V2.0 설계 수정하기 (IDE 복귀)</button>
             </div>
         </div>
@@ -209,58 +212,28 @@ html_code = """
 
     <div id="report-screen" class="hidden">
         <div style="max-width:1000px; margin:0 auto;">
-            <h1>📊 시스템 성과 상세 비교 (Trade-off 분석)</h1>
+            <h1>📊 시스템 성과 상세 비교 (Trade-off)</h1>
             
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px; margin-top:30px;">
                 <div class="stat-card" style="border-top:4px solid var(--v1-color);">
-                    <h2 style="margin-top:0; color:var(--v1-color);">V1.0 (효율 중심 모델)</h2>
-                    <p style="color:#888; font-size:13px; margin-bottom:20px;">
-                        빠른 처리에 집중하여 단기 비용은 절감했으나, <br>품질 비용(재문의, 이탈)이 증가함.
-                    </p>
-                    <div class="metric-row">
-                        <span class="metric-label">⚡ 처리 속도 (Speed)</span>
-                        <div class="metric-bar-container"><div class="metric-bar" style="width:95%; background:var(--v1-color);"></div></div>
-                        <span class="metric-value">95</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">✅ 해결률 (FCR)</span>
-                        <div class="metric-bar-container"><div class="metric-bar" style="width:50%; background:#666;"></div></div>
-                        <span class="metric-value">50</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">⚖️ 조직 안정성</span>
-                        <div class="metric-bar-container"><div class="metric-bar" style="width:20%; background:red;"></div></div>
-                        <span class="metric-value">Low</span>
-                    </div>
+                    <h2 style="margin-top:0; color:var(--v1-color);">V1.0 (효율 중심)</h2>
+                    <div class="metric-row"><span style="width:120px; color:#aaa;">처리 속도</span><div class="metric-bar-container"><div class="metric-bar" style="width:95%; background:var(--v1-color);"></div></div><span style="width:40px; text-align:right; color:white;">95</span></div>
+                    <div class="metric-row"><span style="width:120px; color:#aaa;">해결률</span><div class="metric-bar-container"><div class="metric-bar" style="width:50%; background:#666;"></div></div><span style="width:40px; text-align:right; color:white;">50</span></div>
+                    <div class="metric-row"><span style="width:120px; color:#aaa;">조직 안정성</span><div class="metric-bar-container"><div class="metric-bar" style="width:20%; background:red;"></div></div><span style="width:40px; text-align:right; color:white;">Low</span></div>
                 </div>
 
                 <div class="stat-card" style="border-top:4px solid var(--v2-color);">
-                    <h2 style="margin-top:0; color:var(--v2-color);">V2.0 (공존/지속 모델)</h2>
-                    <p style="color:#888; font-size:13px; margin-bottom:20px;">
-                        처리 속도는 다소 느려졌으나, <br>완전 해결률과 조직 안정성이 대폭 개선됨.
-                    </p>
-                    <div class="metric-row">
-                        <span class="metric-label">⚡ 처리 속도 (Speed)</span>
-                        <div class="metric-bar-container"><div class="metric-bar" style="width:75%; background:#aaa;"></div></div>
-                        <span class="metric-value">75</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">✅ 해결률 (FCR)</span>
-                        <div class="metric-bar-container"><div class="metric-bar" style="width:92%; background:var(--v2-color);"></div></div>
-                        <span class="metric-value">92</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">⚖️ 조직 안정성</span>
-                        <div class="metric-bar-container"><div class="metric-bar" style="width:85%; background:var(--v2-color);"></div></div>
-                        <span class="metric-value">High</span>
-                    </div>
+                    <h2 style="margin-top:0; color:var(--v2-color);">V2.0 (지속 가능 모델)</h2>
+                    <div class="metric-row"><span style="width:120px; color:#aaa;">처리 속도</span><div class="metric-bar-container"><div class="metric-bar" style="width:75%; background:#aaa;"></div></div><span style="width:40px; text-align:right; color:white;">75</span></div>
+                    <div class="metric-row"><span style="width:120px; color:#aaa;">해결률</span><div class="metric-bar-container"><div class="metric-bar" style="width:92%; background:var(--v2-color);"></div></div><span style="width:40px; text-align:right; color:white;">92</span></div>
+                    <div class="metric-row"><span style="width:120px; color:#aaa;">조직 안정성</span><div class="metric-bar-container"><div class="metric-bar" style="width:85%; background:var(--v2-color);"></div></div><span style="width:40px; text-align:right; color:white;">High</span></div>
                 </div>
             </div>
             
-            <div style="text-align:center; margin-top:50px; padding-top:20px; border-top:1px solid #333;">
-                <p style="font-size:16px; color:#ccc;">실험 종료. 엔지니어님의 설계 데이터가 전송되었습니다.</p>
+            <div style="text-align:center; margin-top:50px;">
+                <p style="font-size:16px; color:#ccc;">실험이 종료되었습니다. 설계하신 데이터를 제출해주세요.</p>
                 <div style="display:flex; gap:15px; justify-content:center;">
-                    <button class="btn" onclick="window.open('https://forms.google.com/your-survey-url', '_blank')">📝 설문조사 참여 (필수)</button>
+                    <button class="btn" onclick="window.open('https://forms.google.com/your-survey-url', '_blank')">📝 설문조사 참여</button>
                     <button class="btn" style="background:#333; border:1px solid #555;" onclick="location.reload()">🔄 처음부터 다시 하기</button>
                 </div>
             </div>
@@ -269,98 +242,87 @@ html_code = """
 
     <script>
         const GOOGLE_SCRIPT_URL = "YOUR_GOOGLE_SCRIPT_URL_HERE"; 
-        
-        // Data Store
-        let experimentData = { v1_choices: [], v2_choices: [], custom_input: "" };
+        let experimentData = { v1_choices: [], v2_choices: [] };
 
-        // *** SCENARIOS WITH TEMPLATES ***
+        // *** SCENARIOS WITH "SKELETON PROMPTS" ***
         const scenarios = {
             1: {
-                intro: "반갑습니다. 프로젝트 설계를 시작합니다. 각 단계별로 가장 적합하다고 생각되는 아키텍처를 정의해주세요.",
+                intro: "반갑습니다. 프로젝트 설계를 시작합니다. 각 단계별로 **파라미터(Parameter)를 직접 정의**하여 아키텍처를 완성해주세요.",
                 steps: [
                     {
-                        q: "Step 1. [협업 구조] AI와 상담원의 역할 비중을 어떻게 두시겠습니까?",
+                        q: "Step 1. [협업 구조] AI와 상담원의 역할 비중을 정의하십시오.",
                         chips: [
-                            { label: "AI Gatekeeper (효율)", prompt: "AI가 먼저 응대하고, 해결 못하는 [10%]의 복잡한 문의만 상담원에게 넘겨.", code: "  architecture:\\n    type: 'Gatekeeper'\\n    deflection_target: '90%'" },
-                            { label: "Hybrid Router (균형)", prompt: "고객 의도를 분석해서 [단순 문의]는 AI가, [감정적 문의]는 상담원이 맡도록 분류해.", code: "  architecture:\\n    type: 'Smart_Router'\\n    priority: 'balance'" },
-                            { label: "AI Copilot (품질)", prompt: "모든 전화는 상담원이 받고, AI는 옆에서 [자료 검색]과 [요약]만 보조해.", code: "  architecture:\\n    type: 'Copilot_Only'\\n    priority: 'quality'" }
+                            { label: "AI Gatekeeper (효율)", prompt: "AI가 먼저 응대하고, 해결 불가능한 {{10%}}의 문의만 상담원에게 이관하라.", code: "architecture: Gatekeeper (Target: {{10%}})" },
+                            { label: "Smart Router (균형)", prompt: "고객 의도를 분석하여 {{단순 문의}}는 AI가, {{복잡한 문의}}는 상담원이 처리하도록 라우팅하라.", code: "architecture: Router (Split: {{단순}}/{{복잡}})" },
+                            { label: "Copilot Only (품질)", prompt: "모든 전화는 상담원이 받고, AI는 {{자료 검색}} 역할만 수행하라.", code: "architecture: Copilot (Role: {{자료 검색}})" }
                         ]
                     },
                     {
-                        q: "Step 2. [데이터 처리] 고객 발화의 분석 깊이는?",
+                        q: "Step 2. [데이터 처리] 고객 발화 분석의 깊이와 속도를 설정하십시오.",
                         chips: [
-                            { label: "키워드 추출 (Fast)", prompt: "속도가 중요해. 감정 분석은 생략하고 핵심 키워드만 [0.2초] 안에 추출해.", code: "  data_processing:\\n    depth: 'keyword_only'\\n    latency: 'ultra_low'" },
-                            { label: "요약 리포트 (Balanced)", prompt: "상담원이 읽기 쉽게 핵심 내용을 [3줄]로 요약해서 전달해.", code: "  data_processing:\\n    depth: 'summary'\\n    latency: 'standard'" },
-                            { label: "전체 맥락 (Deep)", prompt: "모든 뉘앙스가 중요해. 전체 스크립트와 [감정 점수]를 실시간으로 분석해.", code: "  data_processing:\\n    depth: 'full_context'\\n    latency: 'high'" }
+                            { label: "Fast (속도)", prompt: "속도가 최우선이다. 감정 분석은 생략하고 {{0.2초}} 이내에 키워드만 추출하라.", code: "processing: Fast (Latency: {{0.2초}})" },
+                            { label: "Deep (맥락)", prompt: "정확도가 최우선이다. {{전체 스크립트}}와 감정 상태를 실시간 분석하라.", code: "processing: Deep (Scope: {{전체 스크립트}})" }
                         ]
                     },
                     {
-                        q: "Step 3. [개입 강도] 상담 중 AI는 얼마나 개입할까요?",
+                        q: "Step 3. [개입 강도] 상담 중 AI의 통제 권한을 설정하십시오.",
                         chips: [
-                            { label: "정답 강제 (Direct)", prompt: "표준화가 중요해. AI가 제시한 스크립트와 [일치율 90%] 이상으로 말하게 해.", code: "  intervention:\\n    style: 'enforce_script'\\n    autonomy: 'low'" },
-                            { label: "추천 제시 (Suggest)", prompt: "AI가 [Top 3] 추천 답변을 띄워주되, 선택은 상담원에게 맡겨.", code: "  intervention:\\n    style: 'suggestion'\\n    autonomy: 'medium'" },
-                            { label: "코칭 모드 (Teach)", prompt: "답을 주지 말고, '[공감]이 필요한 타이밍입니다' 같은 전략적 조언만 해.", code: "  intervention:\\n    style: 'coaching'\\n    autonomy: 'high'" }
+                            { label: "강제 (Direct)", prompt: "표준화를 위해 AI가 제시한 스크립트를 {{화면 최상단}}에 고정하고 읽게 유도하라.", code: "intervention: Enforce (UI: {{화면 최상단}})" },
+                            { label: "코칭 (Coach)", prompt: "직접적인 답 대신 '지금은 {{공감}}할 타이밍입니다' 같은 조언만 제공하라.", code: "intervention: Coach (Focus: {{공감}})" }
                         ]
                     },
                     {
-                        q: "Step 4. [워크플로우] 콜 종료 후 연결 속도는?",
+                        q: "Step 4. [워크플로우] 콜 종료 후 연결 속도(Pacing)를 설정하십시오.",
                         chips: [
-                            { label: "즉시 연결 (Push)", prompt: "대기 고객이 많아. 후처리는 나중에 하고 [0초] 텀으로 바로 연결해.", code: "  pacing:\\n    mode: 'auto_push'\\n    gap: '0s'" },
-                            { label: "자동 텀 (Fixed)", prompt: "정리를 위해 [10초] 정도만 시간 주고 자동 연결해.", code: "  pacing:\\n    mode: 'fixed_gap'\\n    gap: '10s'" },
-                            { label: "준비 시 연결 (Pull)", prompt: "상담원이 '[준비 완료]' 버튼을 눌러야만 다음 콜을 연결해.", code: "  pacing:\\n    mode: 'manual_ready'\\n    gap: 'variable'" }
+                            { label: "Push (즉시)", prompt: "대기 시간을 없애기 위해 후처리 없이 {{0초}} 텀으로 다음 콜을 강제 배정하라.", code: "pacing: Push (Gap: {{0초}})" },
+                            { label: "Pull (준비)", prompt: "상담원이 {{준비 완료}} 버튼을 눌러야만 다음 콜을 배정하라.", code: "pacing: Pull (Trigger: {{준비 완료}})" }
                         ]
                     },
                     {
-                        q: "Step 5. [추가 설정] 보완하고 싶은 기능이 있나요? (Optional)",
+                        q: "Step 5. [추가 설정] 보완하고 싶은 기능이 있다면 정의하십시오. (없으면 '패스')",
                         chips: [
-                            { label: "관리자 알림", prompt: "통화가 [5분] 이상 길어지면 관리자에게 알림을 보내.", code: "  addon:\\n    feature: 'admin_alert'" },
-                            { label: "다국어 번역", prompt: "[영어/중국어] 고객을 위해 실시간 통번역 기능을 켜줘.", code: "  addon:\\n    feature: 'translation'" },
-                            { label: "패스 (Skip)", prompt: "현재 설계로 확정합니다.", code: "" }
+                            { label: "관리자 알림", prompt: "통화 시간이 {{5분}}을 초과하면 관리자에게 알림을 발송하라.", code: "addon: Alert (Threshold: {{5분}})" },
+                            { label: "패스", prompt: "현재 설계를 확정하고 배포한다.", code: "addon: None" }
                         ]
                     }
                 ]
             },
             2: {
-                intro: "V2.0 수정을 시작합니다. 효율성은 유지하되, '지속 가능성(Sustainability)'을 높이는 방향으로 재설계해주세요.",
+                intro: "V2.0 수정을 시작합니다. V1의 효율성은 유지하되, **조직 안정성(Stability)**을 확보할 수 있도록 파라미터를 튜닝하십시오.",
                 steps: [
                     {
-                        q: "Step 1. [구조 개선] 상담원 보호를 위해 구조를 어떻게 바꿀까요?",
+                        q: "Step 1. [구조 개선] 상담원 보호를 위한 필터링 로직을 추가하십시오.",
                         chips: [
-                            { label: "AI 필터링 (Shield)", prompt: "AI가 [욕설/악성] 민원을 먼저 걸러내고, 상담원 연결을 차단해.", code: "  architecture:\\n    type: 'Shield_Bot'\\n    focus: 'protection'" },
-                            { label: "협업 강화 (Partner)", prompt: "상담원이 통화할 때 AI가 실시간으로 [팩트체크]와 [규정 검색]을 대신 해줘.", code: "  architecture:\\n    type: 'Active_Partner'\\n    focus: 'support'" },
-                            { label: "감정 케어 (Empathy)", prompt: "고객이 화내면 AI가 상담원에게 [심호흡 알림]과 [진정 멘트]를 띄워줘.", code: "  architecture:\\n    type: 'Empathy_Coach'\\n    focus: 'mental_care'" }
+                            { label: "Shield Bot", prompt: "AI가 {{욕설/고성}}이 감지되면 즉시 상담원 연결을 차단하고 경고 멘트를 송출하라.", code: "protection: Shield (Block: {{욕설/고성}})" },
+                            { label: "Empathy Coach", prompt: "고객이 화를 내면 상담원에게 {{심호흡 가이드}}를 띄워 멘탈을 케어하라.", code: "protection: Empathy (Action: {{심호흡 가이드}})" }
                         ]
                     },
                     {
-                        q: "Step 2. [정보 전달] 정보의 전달 방식은?",
+                        q: "Step 2. [정보 전달] 정보 전달 방식을 어떻게 변경하시겠습니까?",
                         chips: [
-                            { label: "순화 전달 (Safe)", prompt: "욕설은 텍스트로 순화하고, 고함 소리는 볼륨을 [50%] 낮춰서 전달해.", code: "  input:\\n    sanitize: true\\n    tone_down: true" },
-                            { label: "경고 표시 (Alert)", prompt: "원본은 그대로 두되, 화면에 '[공격적 성향]'이라고 빨간 경고창을 띄워.", code: "  input:\\n    sanitize: false\\n    visual_warning: true" },
-                            { label: "원본 유지 (Raw)", prompt: "정확한 파악을 위해 필터링 없이 그대로 전달해.", code: "  input:\\n    sanitize: false" }
+                            { label: "Sanitize (순화)", prompt: "욕설은 텍스트로 순화하고, 고함 소리는 볼륨을 {{50%}} 낮춰서 전달하라.", code: "input: Sanitize (Volume: -{{50%}})" },
+                            { label: "Raw (원본)", prompt: "정확한 파악을 위해 {{필터링 없이}} 원본 그대로 전달하라.", code: "input: Raw (Filter: {{None}})" }
                         ]
                     },
                     {
-                        q: "Step 3. [개입 방식] 전문성 지원 방식은?",
+                        q: "Step 3. [개입 방식] 전문성 지원 방식을 정의하십시오.",
                         chips: [
-                            { label: "스크립트 고정", prompt: "상담원이 당황하지 않게 가장 [안전한 답변] 스크립트만 보여줘.", code: "  intervention:\\n    style: 'safety_script'" },
-                            { label: "협상 전략 제안", prompt: "단순 답변 말고, '이럴 땐 [쿠폰]으로 보상하세요' 같은 해결 전략을 제안해.", code: "  intervention:\\n    style: 'strategic_advice'" },
-                            { label: "자율권 부여", prompt: "AI 개입을 최소화하고 상담원의 재량권을 늘려줘.", code: "  intervention:\\n    style: 'minimal'" }
+                            { label: "Strategic Advice", prompt: "단순 답변 대신 '이럴 땐 {{쿠폰}}으로 보상하세요' 같은 해결 전략을 제안하라.", code: "support: Strategy (Offer: {{쿠폰}})" },
+                            { label: "Safety Script", prompt: "상담원이 당황하지 않게 가장 {{안전한 답변}} 스크립트만 보여줘라.", code: "support: Safety (Content: {{안전한 답변}})" }
                         ]
                     },
                     {
-                        q: "Step 4. [워크플로우] 번아웃 방지 대책은?",
+                        q: "Step 4. [워크플로우] 번아웃 방지 대책을 수립하십시오.",
                         chips: [
-                            { label: "동적 휴식 (Smart)", prompt: "AI가 통화 내용을 분석해서, 스트레스 지수가 [80점] 이상이면 휴식을 줘.", code: "  pacing:\\n    mode: 'stress_based_break'" },
-                            { label: "강제 쿨다운 (Force)", prompt: "모든 통화 종료 후 무조건 [30초]씩 쉬게 강제해.", code: "  pacing:\\n    mode: 'forced_cooldown'" },
-                            { label: "성과 보상 (Game)", prompt: "어려운 콜을 처리하면 [인센티브 포인트]를 즉시 지급해.", code: "  pacing:\\n    mode: 'gamification'" }
+                            { label: "Dynamic Break", prompt: "AI 분석 결과 스트레스 지수가 {{80점}} 이상이면 자동으로 휴식을 부여하라.", code: "pacing: Dynamic (Threshold: {{80점}})" },
+                            { label: "Gamification", prompt: "어려운 콜을 처리하면 {{인센티브}}를 즉시 지급하여 동기를 부여하라.", code: "pacing: Game (Reward: {{인센티브}})" }
                         ]
                     },
                     {
-                        q: "Step 5. [추가 설정] 마지막으로 더 필요한 기능은? (Optional)",
+                        q: "Step 5. [추가 설정] 상담원 케어를 위한 추가 기능이 있습니까?",
                         chips: [
-                            { label: "심리 상담 연계", prompt: "업무 종료 후 AI가 상담원의 상태를 체크하고 [전문가 상담]을 예약해줘.", code: "  care:\\n    program: 'EAP_connect'" },
-                            { label: "칭찬 알림", prompt: "고객이 '감사합니다'라고 하면 화면에 [폭죽 효과]를 띄워줘.", code: "  care:\\n    program: 'positive_reinforcement'" },
-                            { label: "패스 (Skip)", prompt: "설계를 완료합니다.", code: "" }
+                            { label: "EAP 연계", prompt: "업무 종료 후 상담원 상태를 체크하고 {{심리 상담}}을 예약하라.", code: "care: EAP (Action: {{심리 상담}})" },
+                            { label: "패스", prompt: "설계를 완료하고 배포한다.", code: "care: None" }
                         ]
                     }
                 ]
@@ -379,11 +341,9 @@ html_code = """
 
         function typeCode(text) {
             if(!text) return;
-            generatedCode += text;
+            generatedCode += text + "\\n";
             const display = document.getElementById('code-display');
             let formatted = generatedCode
-                .replace(/^(\\s*)([a-z_]+):/gm, '$1<span class="k">$2</span>:') 
-                .replace(/'([^']+)'/g, '<span class="s">\\' $1\\'</span>')
                 .split('\\n').map((line, i) => 
                     `<div class="code-line"><div class="line-num">${i+1}</div><div class="code-content">${line}</div></div>`
                 ).join('');
@@ -403,16 +363,13 @@ html_code = """
         function setupPhase(phase) {
             currentPhase = phase;
             stepIndex = 0;
-            generatedCode = phase===1 ? "# Project: Workflow V1.0 (Initial)\\nsystem_config:\\n" : "# Project: Workflow V2.0 (Revised)\\nsystem_config:\\n";
-            
+            generatedCode = phase===1 ? "# Project: Workflow V1.0 (Initial)\\nconfig:\\n" : "# Project: Workflow V2.0 (Revised)\\nconfig:\\n";
             document.getElementById('code-display').innerHTML = "";
             typeCode(""); 
             document.getElementById('chat-history').innerHTML = "";
-            
             const inputEl = document.getElementById('prompt-input');
             inputEl.disabled = false;
             inputEl.value = "";
-            
             switchScreen('ide-screen');
             appendMsg('ai', scenarios[phase].intro);
             askQuestion();
@@ -423,22 +380,22 @@ html_code = """
             setTimeout(() => setupPhase(1), 300);
         }
         function startPhase2() { setupPhase(2); }
-
-        function sendDataToGoogleSheet() {
-             // fetch(GOOGLE_SCRIPT_URL, ... )
-             console.log("Saving Data:", experimentData);
+        
+        function insertVar(varName) {
+            const input = document.getElementById('prompt-input');
+            input.value += varName;
+            input.focus();
         }
 
         function askQuestion() {
             if(stepIndex >= scenarios[currentPhase].steps.length) {
-                appendMsg('ai', "모든 설계가 완료되었습니다. 배포하시겠습니까?");
+                appendMsg('ai', "설계가 완료되었습니다. 배포하시겠습니까?");
                 const h = document.getElementById('chat-history');
                 const btn = document.createElement('button');
                 btn.className = 'btn';
                 btn.style.marginTop = '10px';
                 btn.innerText = currentPhase===1 ? "🚀 V1.0 배포" : "🚀 V2.0 배포 및 비교";
                 btn.onclick = () => {
-                    if(currentPhase===2) sendDataToGoogleSheet();
                     switchScreen(currentPhase===1 ? 'intermission-screen' : 'report-screen');
                 };
                 h.appendChild(btn);
@@ -460,7 +417,7 @@ html_code = """
                     el.onclick = () => {
                         const inp = document.getElementById('prompt-input');
                         inp.value = c.prompt;
-                        inp.dataset.code = c.code;
+                        inp.dataset.code = c.code; // Store the template code
                         inp.focus();
                     };
                     chips.appendChild(el);
@@ -468,12 +425,25 @@ html_code = """
             }, 500);
         }
 
+        // --- VALIDATION LOGIC ---
         const inputEl = document.getElementById('prompt-input');
         inputEl.addEventListener('keypress', function(e) {
             if(e.key === 'Enter' && this.value.trim() !== "") {
                 const txt = this.value;
-                const code = this.dataset.code;
                 
+                // 1. Check for placeholders {{...}}
+                if (txt.includes("{{") || txt.includes("}}")) {
+                    appendMsg('error', "⚠️ 오류: 대괄호 {{...}} 안의 내용을 구체적인 값으로 수정해주세요.");
+                    this.classList.add('error-shake');
+                    setTimeout(() => this.classList.remove('error-shake'), 500);
+                    return; // Stop here
+                }
+
+                // 2. Proceed if valid
+                const codeTemplate = this.dataset.code || "custom: " + txt; 
+                // Clean the code template by removing {{ }} roughly or just use user input for simulation
+                const finalCode = codeTemplate.replace(/{{/g, '').replace(/}}/g, '');
+
                 if(currentPhase === 1) experimentData.v1_choices.push(txt);
                 else experimentData.v2_choices.push(txt);
 
@@ -482,15 +452,11 @@ html_code = """
                 this.dataset.code = "";
                 document.getElementById('suggestion-chips').innerHTML = "";
 
-                if(code) {
-                    setTimeout(() => { typeCode(code); stepIndex++; askQuestion(); }, 600);
-                } else {
-                    setTimeout(() => { 
-                        if(stepIndex < 4) typeCode("\\n  # " + txt.substring(0,20) + "...\\n");
-                        stepIndex++; 
-                        askQuestion(); 
-                    }, 600);
-                }
+                setTimeout(() => { 
+                    typeCode(finalCode); 
+                    stepIndex++; 
+                    askQuestion(); 
+                }, 600);
             }
         });
     </script>
